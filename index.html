@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>You & AI — Career Map</title>
+<style>
+  body{margin:0;font-family:"Noto Sans Thai","Sarabun",system-ui,sans-serif;background:#f5f1ea;color:#222;display:flex;justify-content:center}
+  .wrap{max-width:980px;width:100%;padding:24px}
+  h1{margin:0;font-size:34px;font-weight:800;cursor:default}
+  .sub{color:#666;margin:4px 0 14px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:10px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend i{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .controls{display:flex;align-items:center;gap:12px;margin:10px 0;font-size:14px}
+  #year{flex:1;accent-color:#e4572e}
+  #yearLabel{font-weight:800;font-size:22px;width:64px}
+  button{border:0;background:#222;color:#fff;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:inherit}
+  svg{width:100%;height:auto;background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .pt{cursor:pointer}
+  .pt circle{transition:r .3s}
+  .lbl{font-size:10.5px;fill:#333;pointer-events:none}
+  .subdot{cursor:pointer}
+  #tip{position:fixed;pointer-events:none;background:#222;color:#fff;padding:9px 11px;border-radius:6px;font-size:12px;line-height:1.5;opacity:0;transition:opacity .15s;max-width:240px;z-index:10}
+  #info{margin-top:12px;padding:12px 14px;background:#fff;border-left:4px solid #e4572e;border-radius:6px;font-size:14px;min-height:22px}
+  #job{display:inline-block;padding:0 4px;border-bottom:4px solid currentColor;cursor:pointer;transition:opacity .3s,transform .3s}
+  #job.out{opacity:0;transform:translateY(-10px)}
+  #jobTh{font-size:15px;color:#888;margin:2px 0 0;min-height:20px}
+  /* ===== การ์ดคำแนะนำ ===== */
+  #panel{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+  .ph{grid-column:1/-1;font-size:18px;font-weight:800;margin-top:6px}
+  .ph small{display:block;font-size:13px;font-weight:400;color:#777}
+  .card{background:#fff;border-radius:8px;padding:12px 14px;border-top:4px solid var(--c);font-size:13.5px;line-height:1.6;transition:box-shadow .2s,transform .2s}
+  .card.hl{box-shadow:0 0 0 2px var(--c),0 6px 16px rgba(0,0,0,.08);transform:translateY(-2px)}
+  .card h3{margin:6px 0 4px;font-size:15.5px}
+  .card ol{margin:6px 0;padding-left:20px}
+  .badge{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--c);padding:2px 9px;border-radius:99px}
+  .zone{font-size:11px;color:var(--c);font-weight:700;margin-left:6px}
+  .step{margin-top:8px;padding:7px 9px;background:#f5f1ea;border-radius:6px}
+  .meta{margin-top:6px;font-size:11.5px;color:#888}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="headline">In the age of AI, can I still be <span id="article">a</span> <span id="job">___</span>?</h1>
+  <div id="jobTh"></div>
+  <div class="sub">แต่ละจุดคืออาชีพ · แกน X = AI ทำงานในอาชีพนี้ได้กี่ % · แกน Y = คนยังอยากจ้างมนุษย์แค่ไหน</div>
+  <div class="legend" id="legend"></div>
+  <div class="controls">
+    <span>ปี</span>
+    <input type="range" id="year" min="2023" max="2030" step="0.05" value="2023">
+    <span id="yearLabel">2023</span>
+    <button id="play">▶ เล่น</button>
+  </div>
+  <svg id="chart" viewBox="0 0 900 640"></svg>
+  <div id="info"></div>
+  <div id="panel"></div>
+</div>
+<div id="tip"></div>
+
+<script>
+// ===== DATA (ค่าประมาณสำหรับ prototype) =====
+const CAT={
+  creative:["สร้างสรรค์","#c9a227"], tech:["เทคโนโลยี","#3b5b92"],
+  biz:["ธุรกิจ/การเงิน","#8e5ea2"], health:["สุขภาพ","#3a8f5c"],
+  edu:["การศึกษา/สังคม","#d9822b"], trade:["บริการ/แรงงาน","#b5442f"]
+};
+// [EN, TH, หมวด, AI Exposure 2023, AI Exposure 2030, Human Premium]
+const JOBS=[
+ ["Copywriter","นักเขียนคำโฆษณา","creative",70,88,35],
+ ["Graphic Designer","กราฟิกดีไซเนอร์","creative",55,80,45],
+ ["Illustrator","นักวาดภาพประกอบ","creative",50,75,52],
+ ["Creative Director","ครีเอทีฟไดเรกเตอร์","creative",38,60,79],
+ ["Event Photographer","ช่างภาพงานอีเวนต์","creative",24,36,66],
+ ["Live Musician","นักดนตรีเล่นสด","creative",6,14,86],
+ ["Content Creator","คอนเทนต์ครีเอเตอร์","creative",40,62,72],
+ ["Journalist","นักข่าว","creative",55,75,60],
+ ["Translator","นักแปลเอกสาร","biz",80,95,25],
+ ["Software Developer","นักพัฒนาซอฟต์แวร์","tech",60,82,60],
+ ["Data Analyst","นักวิเคราะห์ข้อมูล","tech",65,85,48],
+ ["UX Designer","UX ดีไซเนอร์","tech",45,68,66],
+ ["QA Tester","ผู้ทดสอบซอฟต์แวร์","tech",65,88,30],
+ ["IT Support","ไอทีซัพพอร์ต","tech",45,70,40],
+ ["Data Entry","พนักงานคีย์ข้อมูล","biz",90,98,8],
+ ["Call Center","พนักงานคอลเซ็นเตอร์","biz",70,90,20],
+ ["Accountant","นักบัญชี","biz",65,85,55],
+ ["Lawyer","ทนายความ","biz",50,72,82],
+ ["Marketing Manager","ผู้จัดการการตลาด","biz",45,68,65],
+ ["B2B Sales","เซลส์ B2B","biz",30,50,76],
+ ["Recruiter","เจ้าหน้าที่สรรหาบุคลากร","biz",50,72,46],
+ ["Financial Advisor","ที่ปรึกษาการเงิน","biz",45,65,74],
+ ["Doctor (GP)","แพทย์ทั่วไป","health",38,56,94],
+ ["Nurse","พยาบาล","health",15,25,96],
+ ["Radiologist","รังสีแพทย์","health",55,75,78],
+ ["Pharmacist","เภสัชกร","health",45,65,58],
+ ["Therapist","นักจิตบำบัด","health",24,40,89],
+ ["School Teacher","ครูโรงเรียน","edu",28,48,85],
+ ["Online Tutor","ติวเตอร์ออนไลน์","edu",55,78,42],
+ ["Social Worker","นักสังคมสงเคราะห์","edu",16,28,80],
+ ["Chef","เชฟ","trade",10,16,68],
+ ["Electrician","ช่างไฟฟ้า","trade",10,16,58],
+ ["Plumber","ช่างประปา","trade",4,10,52],
+ ["Hair Stylist","ช่างทำผม","trade",4,8,76],
+ ["Barista","บาริสต้า","trade",7,15,44],
+ ["Delivery Driver","ไรเดอร์/คนขับส่งของ","trade",10,30,15],
+ ["Warehouse Worker","พนักงานคลังสินค้า","trade",10,30,8],
+ ["Cashier","แคชเชียร์","trade",30,60,15]
+];
+
+// งานย่อย + วิธีพัฒนา
+// n = ชื่องานย่อย, x = AI Exposure, y = Human Premium, how = พัฒนายังไง, start = เริ่มได้เลย
+const SUBS={
+ "Copywriter":[
+  {n:"คิดคอนเซปต์แคมเปญ",x:38,y:76,how:"ฝึกหา insight จากคนจริง เช่น อ่านรีวิว สัมภาษณ์ลูกค้า แล้วใช้ AI ช่วยแตกไอเดียเป็นหลายสิบแบบก่อนคัดเหลือไม่กี่แบบ",start:"ทำ swipe file เก็บแคมเปญที่ชอบสัปดาห์ละ 5 ชิ้น พร้อมเขียนว่าทำไมมันได้ผล"},
+  {n:"เขียนแคปชันจำนวนมาก",x:92,y:14,how:"ให้ AI ร่าง แล้วคุณเป็นบรรณาธิการ ฝึกเขียน prompt และทำ brand voice guide ที่ AI ใช้ซ้ำได้",start:"สร้าง prompt template สำหรับแคปชัน 3 แพลตฟอร์ม แล้วใช้ซ้ำทั้งสัปดาห์"},
+  {n:"เขียนบทความ SEO",x:88,y:20,how:"ขยับจากคนเขียนไปเป็นคนวางกลยุทธ์คอนเทนต์ เรียน keyword research, search intent และการวัดผล",start:"เปิด Google Search Console ดูว่าบทความไหนคนเห็นเยอะแต่คลิกน้อย แล้ววางแผนแก้"},
+  {n:"คุย brief กับลูกค้า",x:18,y:82,how:"ฝึกตั้งคำถามเจาะให้เจอปัญหาจริงของลูกค้า และสรุป brief กลับให้ลูกค้ายืนยันทุกครั้ง",start:"ใช้เทคนิค 5 Whys ในการคุย brief ครั้งถัดไป และให้ AI ถอดเทปประชุมช่วยสรุป"},
+  {n:"ปรับโทนให้ตรงแบรนด์",x:62,y:58,how:"เขียน brand voice guide ที่ชัดพอให้ทั้งคนและ AI ใช้ได้ แล้วฝึกตาให้จับได้เร็วว่าตรงไหนโทนเพี้ยน",start:"ให้ AI เขียนข้อความเดียวกัน 5 โทน แล้วฝึกระบุว่าอันไหนตรงแบรนด์ที่สุดและเพราะอะไร"}
+ ],
+ "Graphic Designer":[
+  {n:"ทำภาพโซเชียลจำนวนมาก",x:90,y:15,how:"เปลี่ยนจากทำทีละชิ้นเป็นออกแบบ template และ design system ให้ทีมหรือ AI ผลิตต่อได้",start:"ทำ template โพสต์ 5 แบบใน Figma หรือ Canva ที่คนอื่นเปลี่ยนแค่ข้อความก็ใช้ได้"},
+  {n:"รีทัช/ไดคัท",x:95,y:8,how:"ใช้เครื่องมือ AI อย่าง Generative Fill หรือ Remove Background ให้คล่อง แล้วเอาเวลาที่ได้คืนไปทำงานคิด",start:"จับเวลารีทัชภาพเดียวกันด้วยมือเทียบกับใช้ AI แล้วเปรียบเทียบคุณภาพ"},
+  {n:"วาง Brand Identity",x:35,y:80,how:"ศึกษา brand strategy ว่าทำไมแบรนด์ต้องหน้าตาแบบนี้ ไม่ใช่แค่ทำให้สวย และใช้ AI ทำ moodboard เพื่อสำรวจทิศทางให้เร็วขึ้น",start:"เลือกแบรนด์ที่ชอบ 1 แบรนด์ แล้วเขียนวิเคราะห์ว่าโลโก้ สี และฟอนต์สื่ออะไร"},
+  {n:"พรีเซนต์งานให้ลูกค้า",x:15,y:86,how:"ฝึกอธิบายเหตุผลของงานเป็นภาษาธุรกิจ เช่น งานนี้ช่วยให้ลูกค้าจำแบรนด์ได้ง่ายขึ้นอย่างไร",start:"อัดวิดีโอตัวเองพรีเซนต์งาน 3 นาที แล้วดูย้อนหลังเพื่อปรับ"}
+ ],
+ "Software Developer":[
+  {n:"เขียนโค้ด boilerplate",x:92,y:10,how:"ใช้ AI coding assistant อย่าง GitHub Copilot, Cursor หรือ Claude Code ให้คล่อง และฝึกรีวิวโค้ดที่ AI เขียนให้ละเอียด",start:"ให้ AI เขียน CRUD API 1 ชุด แล้วไล่หาจุดที่ผิดหรือไม่ปลอดภัย"},
+  {n:"Debug/แก้บั๊ก",x:70,y:40,how:"ให้ AI ช่วยหาสาเหตุ แต่ต้องเข้าใจระบบพอจะรู้ว่า AI ตอบผิด ฝึกอ่าน log ใช้ debugger และเขียน test",start:"ครั้งหน้าที่เจอบั๊ก ลองหาสาเหตุเองก่อน 15 นาที แล้วค่อยเทียบกับคำตอบของ AI"},
+  {n:"ออกแบบสถาปัตยกรรมระบบ",x:40,y:75,how:"ศึกษา system design และฝึกเขียน design doc ที่อธิบาย trade-off ว่าทำไมเลือกทางนี้",start:"อ่าน Designing Data-Intensive Applications สัปดาห์ละ 1 บท"},
+  {n:"คุย requirement กับทีม",x:20,y:80,how:"ฝึกแปลปัญหาธุรกิจเป็น spec และเรียนรู้ธุรกิจที่ตัวเองทำอยู่ให้ลึก",start:"ก่อนเริ่มฟีเจอร์ถัดไป ถามว่า 'ทำไมต้องมีฟีเจอร์นี้' ให้ได้คำตอบที่วัดผลได้"},
+  {n:"รับผิดชอบระบบ production",x:50,y:88,how:"เรียน observability, incident response และ security เพราะคนที่รับผิดชอบเมื่อระบบล่มคือคนที่ AI แทนไม่ได้",start:"อาสาเข้าเวร on-call หรือเขียน postmortem ของเหตุขัดข้องครั้งล่าสุด"}
+ ],
+ "Accountant":[
+  {n:"บันทึกบัญชี",x:95,y:10,how:"ใช้โปรแกรมบัญชีที่ดึงข้อมูลอัตโนมัติและ AI อ่านใบเสร็จ (OCR) แล้วขยับไปเป็นคนตรวจความผิดปกติ",start:"ลองสแกนใบเสร็จอัตโนมัติกับเอกสาร 1 เดือน แล้วจดว่าระบบผิดตรงไหนบ้าง"},
+  {n:"ทำรายงานงบการเงิน",x:80,y:35,how:"ฝึกอ่านงบแล้วเล่าเป็น insight ให้ผู้บริหาร ไม่ใช่แค่ส่งตัวเลข และเรียน Power BI หรือ Excel ขั้นสูง",start:"สรุปงบเดือนล่าสุดเป็น 3 ประเด็นที่ผู้บริหารควรรู้ ในหน้าเดียว"},
+  {n:"วางแผนภาษี",x:50,y:70,how:"ติดตามกฎหมายภาษีให้ทัน ใช้ AI ช่วยค้นและจำลองสถานการณ์ แต่ตรวจกับประกาศของกรมสรรพากรเสมอ",start:"เลือกเคสภาษี 1 เคส ให้ AI ตอบ แล้วตรวจกับประมวลรัษฎากรว่าถูกไหม"},
+  {n:"เซ็นรับรองงบ",x:25,y:95,how:"สอบใบอนุญาตผู้สอบบัญชี (CPA) เพราะใบอนุญาตและความรับผิดชอบทางกฎหมายเป็นสิ่งที่ AI ถือแทนไม่ได้",start:"เช็กเงื่อนไขการสอบ CPA ของสภาวิชาชีพบัญชี และวางแผนเก็บชั่วโมงฝึกงาน"}
+ ],
+ "School Teacher":[
+  {n:"ตรวจการบ้าน",x:85,y:20,how:"ใช้ AI ช่วยตรวจรอบแรกโดยมี rubric ชัดเจน แล้วใช้เวลาที่ได้คืนไปให้ feedback รายคน",start:"เขียน rubric 1 ชุด แล้วให้ AI ตรวจ 5 ชิ้นเทียบกับที่ตัวเองตรวจ"},
+  {n:"เตรียมสื่อการสอน",x:75,y:30,how:"ใช้ AI ร่างใบงานและสไลด์ แล้วปรับให้เข้ากับบริบทและระดับของนักเรียนจริง",start:"ให้ AI ทำใบงาน 3 ระดับความยากจากบทเรียนเดียวกัน"},
+  {n:"ดูแลนักเรียนรายคน",x:15,y:92,how:"เรียนทักษะ coaching จิตวิทยาวัยรุ่น และ Social-Emotional Learning (SEL)",start:"คุยกับนักเรียนวันละ 1 คน คนละ 5 นาที แล้วจดสิ่งที่ได้เรียนรู้"},
+  {n:"คุมชั้นเรียน",x:10,y:84,how:"ฝึก classroom management และออกแบบกิจกรรม active learning ที่ต้องมีครูอยู่ในห้องจริง",start:"เปลี่ยนการบรรยาย 1 คาบเป็นกิจกรรมกลุ่ม แล้วสังเกตว่านักเรียนมีส่วนร่วมต่างไปไหม"}
+ ]
+};
+
+// แนวทางตามโซน
+const ZONE={
+ "Human Core":{c:"#4a7a2c",act:"ลงทุนเพิ่ม",why:"AI แทนยาก และคนยังยอมจ่ายให้มนุษย์ ฝึกให้ลึกจะคุ้มที่สุด"},
+ "Superpowered":{c:"#3b5b92",act:"ใช้คู่กับ AI",why:"ใช้ AI ช่วยแล้วเก่งขึ้นหลายเท่า แต่ต้องมีคุณคุมคุณภาพ"},
+ "Replace Zone":{c:"#b5442f",act:"ส่งให้ AI แล้วคุณคุม",why:"อย่าแข่งกับ AI ตรงนี้ ฝึกสั่งงานและตรวจงาน AI แทน"},
+ "Untouched":{c:"#8a6d3b",act:"รักษาไว้และต่อยอด",why:"AI ยังไม่แตะ แต่คนก็ยังไม่ได้จ่ายแพงเพื่อมนุษย์ ควรต่อยอดให้มีมูลค่าขึ้น"}
+};
+const ZONE_ORDER=["Human Core","Superpowered","Replace Zone","Untouched"];
+
+// คำแนะนำทั่วไป สำหรับอาชีพที่ยังไม่มีข้อมูลงานย่อย
+const GENERAL={
+ "Human Core":["ฝึกทักษะสื่อสาร การดูแลคน และความเชี่ยวชาญเชิงลึกให้มากขึ้น","ใช้ AI ทำงานเอกสารและงานธุรการ เพื่อคืนเวลาให้งานที่ต้องใช้คน","สร้างชื่อเสียงและความไว้ใจ เพราะนั่นคือสิ่งที่ลูกค้าจ่ายให้"],
+ "Superpowered":["เรียนเครื่องมือ AI ของสายงานนี้ให้คล่องก่อนคนอื่น","ฝึกตรวจและตัดสินผลงานของ AI เพราะคนที่คุมงานได้คือคนที่มีค่า","ขยับไปรับผิดชอบงานที่ใหญ่ขึ้น เพราะ AI ทำให้คนเดียวทำงานได้มากขึ้น"],
+ "Replace Zone":["แยกให้ออกว่างานไหนในอาชีพที่ AI ทำแทนได้ แล้วเลิกแข่งตรงนั้น","ขยับไปเป็นคนคุม ตรวจ หรือออกแบบ workflow ของ AI","มองหาอาชีพข้างเคียงที่ใช้สกิลเดิม แต่อยู่สูงกว่าในแกน Human Premium"],
+ "Untouched":["งานนี้ AI ยังไม่แตะ แต่ควรระวังระบบอัตโนมัติและหุ่นยนต์","เพิ่มทักษะบริการหรือความเชี่ยวชาญเฉพาะ เพื่อขยับขึ้นในแกน Human Premium","ใช้ AI ช่วยงานหลังบ้าน เช่น จัดตาราง ตอบแชตลูกค้า ทำบัญชีร้าน"]
+};
+
+const DEFAULT_INFO='คลิกอาชีพไหนก็ได้เพื่อดูวิธีพัฒนา · อาชีพที่มีขอบดำจะแตกเป็นงานย่อย · คลิกพื้นที่ว่างเพื่อวางจุด "คุณ"';
+
+// ===== CHART SETUP =====
+const W=900,H=640,M={l:64,r:24,t:24,b:56};
+const PW=W-M.l-M.r, PH=H-M.t-M.b;
+const sx=v=>M.l+v/100*PW, sy=v=>M.t+(1-v/100)*PH;
+const svg=document.getElementById('chart'), NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);(parent||svg).appendChild(e);return e;}
+const quad=(x,y)=>y>=50?(x<50?"Human Core":"Superpowered"):(x<50?"Untouched":"Replace Zone");
+
+// legend
+document.getElementById('legend').innerHTML=Object.values(CAT).map(([n,c])=>`<span><i style="background:${c}"></i>${n}</span>`).join('');
+
+// quadrants
+const bg=el('g',{});
+[[M.l,M.t,'#e3eed5'],[sx(50),M.t,'#dfe5f1'],[M.l,sy(50),'#efe8da'],[sx(50),sy(50),'#f2ddd7']]
+ .forEach(([x,y,f])=>el('rect',{x,y,width:PW/2,height:PH/2,fill:f},bg));
+[["HUMAN CORE","AI แตะได้น้อย คนยังอยากได้มนุษย์",M.l+12,M.t+26,"start","#4a7a2c"],
+ ["SUPERPOWERED","AI ทำได้เยอะ แต่ยังต้องมีคนคุม",W-M.r-12,M.t+26,"end","#3b5b92"],
+ ["UNTOUCHED","AI ยังไม่มา แต่หุ่นยนต์อาจมาแทน",M.l+12,H-M.b-28,"start","#8a6d3b"],
+ ["REPLACE ZONE","AI ทำได้ และคนไม่สนว่าใครทำ",W-M.r-12,H-M.b-28,"end","#b5442f"]]
+ .forEach(([t,s,x,y,a,c])=>{
+   el('text',{x,y,'text-anchor':a,fill:c,'font-size':17,'font-weight':800},bg).textContent=t;
+   el('text',{x,y:y+16,'text-anchor':a,fill:c,'font-size':11,opacity:.85},bg).textContent=s;
+ });
+el('line',{x1:sx(50),x2:sx(50),y1:M.t,y2:H-M.b,stroke:'#999','stroke-dasharray':'4 4'},bg);
+el('line',{x1:M.l,x2:W-M.r,y1:sy(50),y2:sy(50),stroke:'#999','stroke-dasharray':'4 4'},bg);
+[0,25,50,75,100].forEach(v=>{
+  el('text',{x:sx(v),y:H-M.b+18,'text-anchor':'middle','font-size':11,fill:'#666'},bg).textContent=v+'%';
+  el('text',{x:M.l-8,y:sy(v)+4,'text-anchor':'end','font-size':11,fill:'#666'},bg).textContent=v;
+});
+el('text',{x:M.l+PW/2,y:H-12,'text-anchor':'middle','font-size':13,'font-weight':700},bg).textContent='AI Exposure · สัดส่วนงานที่ AI ทำได้ →';
+el('text',{'text-anchor':'middle','font-size':13,'font-weight':700,transform:`translate(20,${M.t+PH/2}) rotate(-90)`},bg).textContent='Human Premium · คนยังอยากจ้างมนุษย์แค่ไหน →';
+
+const gTrail=el('g',{}), gPts=el('g',{}), gSub=el('g',{}), gMe=el('g',{});
+const tip=document.getElementById('tip'), info=document.getElementById('info'), panel=document.getElementById('panel');
+info.textContent=DEFAULT_INFO;
+
+// ===== POINTS =====
+const nodes=JOBS.map(([en,th,cat,x23,x30,y])=>{
+  const c=CAT[cat][1];
+  const trail=el('line',{stroke:c,'stroke-width':2,opacity:.3},gTrail);
+  const g=el('g',{class:'pt'},gPts);
+  const dot=el('circle',{r:6.5,fill:c,stroke:SUBS[en]?'#111':'#fff','stroke-width':SUBS[en]?2:1.5},g);
+  const lb=el('text',{class:'lbl'},g); lb.textContent=en;
+  const n={en,th,x23,x30,y,c,g,dot,lb,trail,x:x23};
+  g.addEventListener('mouseenter',e=>showTip(e,n));
+  g.addEventListener('mousemove',moveTip);
+  g.addEventListener('mouseleave',()=>tip.style.opacity=0);
+  g.addEventListener('click',e=>{e.stopPropagation();toggle(n);});
+  return n;
+});
+
+let year=2023, open=null, hlIndex=null;
+function update(){
+  const t=(year-2023)/7;
+  nodes.forEach(n=>{
+    n.x=n.x23+(n.x30-n.x23)*t;
+    const cx=sx(n.x), cy=sy(n.y);
+    n.dot.setAttribute('cx',cx); n.dot.setAttribute('cy',cy);
+    n.lb.setAttribute('x',cx+9); n.lb.setAttribute('y',cy+3.5);
+    Object.entries({x1:sx(n.x23),y1:cy,x2:cx,y2:cy}).forEach(([k,v])=>n.trail.setAttribute(k,v));
+  });
+  drawSubs();
+}
+
+function toggle(n){
+  open = open===n ? null : n;
+  hlIndex=null;
+  nodes.forEach(m=>m.g.style.opacity = open && m!==open ? .12 : 1);
+  gTrail.style.opacity = open ? .15 : 1;
+  drawSubs();
+  if(open) setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+}
+
+// ===== วาดงานย่อย + การ์ดคำแนะนำ =====
+function drawSubs(){
+  gSub.innerHTML=''; panel.innerHTML='';
+  if(!open){info.textContent=DEFAULT_INFO;return;}
+
+  const subs=SUBS[open.en];
+  const jobZone=quad(open.x,open.y), JZ=ZONE[jobZone];
+
+  // อาชีพที่ยังไม่มีงานย่อย → คำแนะนำทั่วไปตามโซน
+  if(!subs){
+    info.innerHTML=`<b>${open.th}</b> อยู่ในโซน <b style="color:${JZ.c}">${jobZone}</b> (ปี ${Math.floor(year)}) · แนวทาง: <b>${JZ.act}</b> · คลิกอีกครั้งเพื่อปิด`;
+    panel.innerHTML=`
+      <div class="ph">ควรพัฒนาตัวเองยังไง ถ้าเป็น${open.th}<small>${JZ.why}</small></div>
+      <div class="card" style="--c:${JZ.c}">
+        <span class="badge">${JZ.act}</span><span class="zone">${jobZone}</span>
+        <h3>แนวทางทั่วไป</h3>
+        <ol>${GENERAL[jobZone].map(s=>`<li>${s}</li>`).join('')}</ol>
+        <div class="meta">ยังไม่มีข้อมูลงานย่อยของอาชีพนี้ เพิ่มได้ใน SUBS เพื่อให้มีคำแนะนำรายสกิล</div>
+      </div>`;
+    return;
+  }
+
+  // อาชีพที่มีงานย่อย → plot บนกราฟ
+  const px=sx(open.x), py=sy(open.y), rings=[];
+  subs.forEach((s,i)=>{
+    const cx=sx(s.x), cy=sy(s.y), zc=ZONE[quad(s.x,s.y)].c;
+    el('line',{x1:px,y1:py,x2:cx,y2:cy,stroke:open.c,'stroke-dasharray':'3 3','stroke-width':1.5},gSub);
+    rings[i]=el('circle',{cx,cy,r:14,fill:'none',stroke:zc,'stroke-width':3,opacity:hlIndex===i?1:0},gSub);
+    const d=el('rect',{class:'subdot',x:cx-6,y:cy-6,width:12,height:12,fill:open.c,stroke:'#fff','stroke-width':1.5,transform:`rotate(45 ${cx} ${cy})`},gSub);
+    d.addEventListener('click',e=>{e.stopPropagation();highlight(i,true);});
+    el('text',{x:cx+12,y:cy+4,'font-size':12,'font-weight':700,fill:'#222','pointer-events':'none'},gSub).textContent=s.n;
+  });
+
+  const replaced=subs.filter(s=>quad(s.x,s.y)==="Replace Zone").length;
+  const human=subs.filter(s=>s.y>=50).length;
+  info.innerHTML=`<b>${open.th}</b> ไม่ได้หายไปทั้งอาชีพ — งานย่อย ${replaced} จาก ${subs.length} อย่างอยู่ใน Replace Zone แต่อีก ${human} อย่างยังเป็นงานที่คนอยากได้มนุษย์ทำ · ดูวิธีพัฒนาแต่ละสกิลด้านล่าง (คลิกอีกครั้งเพื่อปิด)`;
+
+  // การ์ด เรียงตามลำดับความสำคัญของโซน
+  panel.innerHTML=`<div class="ph">ควรพัฒนาสกิลไหนก่อน ถ้าเป็น${open.th}<small>เรียงจากสกิลที่ควรลงทุนเพิ่ม ไปจนถึงสกิลที่ควรส่งให้ AI ทำ</small></div>`;
+  subs.map((s,i)=>({s,i,z:quad(s.x,s.y)}))
+      .sort((a,b)=>ZONE_ORDER.indexOf(a.z)-ZONE_ORDER.indexOf(b.z))
+      .forEach(({s,i,z})=>{
+        const Z=ZONE[z];
+        const card=document.createElement('div');
+        card.className='card'+(hlIndex===i?' hl':'');
+        card.id='card'+i;
+        card.style.setProperty('--c',Z.c);
+        card.innerHTML=`
+          <span class="badge">${Z.act}</span><span class="zone">${z}</span>
+          <h3>${s.n}</h3>
+          <div><b>พัฒนายังไง:</b> ${s.how}</div>
+          <div class="step"><b>เริ่มได้เลย:</b> ${s.start}</div>
+          <div class="meta">AI ทำได้ ${s.x}% · Human Premium ${s.y} · ${Z.why}</div>`;
+        card.addEventListener('mouseenter',()=>rings[i].setAttribute('opacity',1));
+        card.addEventListener('mouseleave',()=>{ if(hlIndex!==i) rings[i].setAttribute('opacity',0); });
+        panel.appendChild(card);
+      });
+}
+
+function highlight(i,scroll){
+  hlIndex=i;
+  drawSubs();
+  const c=document.getElementById('card'+i);
+  if(c && scroll) c.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function showTip(e,n){
+  tip.innerHTML=`<b>${n.th}</b> (${n.en})<br>AI ทำได้: ${Math.round(n.x)}% (ปี ${Math.floor(year)})<br>Human Premium: ${n.y}<br>โซน: <b>${quad(n.x,n.y)}</b><br><i>${SUBS[n.en]?'คลิกเพื่อแตกเป็นงานย่อยและดูวิธีพัฒนา':'คลิกเพื่อดูวิธีพัฒนา'}</i>`;
+  tip.style.opacity=1; moveTip(e);
+}
+function moveTip(e){tip.style.left=e.clientX+14+'px';tip.style.top=e.clientY+14+'px';}
+
+// วางจุด "คุณ"
+svg.addEventListener('click',e=>{
+  if(open){toggle(open);return;}
+  const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+  const p=pt.matrixTransform(svg.getScreenCTM().inverse());
+  if(p.x<M.l||p.x>W-M.r||p.y<M.t||p.y>H-M.b) return;
+  gMe.innerHTML='';
+  el('circle',{cx:p.x,cy:p.y,r:10,fill:'none',stroke:'#e4572e','stroke-width':3},gMe);
+  el('circle',{cx:p.x,cy:p.y,r:3,fill:'#e4572e'},gMe);
+  el('text',{x:p.x+14,y:p.y+5,'font-size':14,'font-weight':800,fill:'#e4572e'},gMe).textContent='คุณ';
+});
+
+// slider + play
+const yr=document.getElementById('year'), yl=document.getElementById('yearLabel');
+yr.oninput=()=>{year=+yr.value; yl.textContent=Math.floor(year); update();};
+document.getElementById('play').onclick=()=>{
+  let v=2023; const id=setInterval(()=>{v+=0.04; if(v>=2030){v=2030;clearInterval(id);} yr.value=v; yr.oninput();},30);
+};
+
+// ===== หัวข้อเปลี่ยนชื่ออาชีพ =====
+const jobEl=document.getElementById('job'),
+      artEl=document.getElementById('article'),
+      thEl=document.getElementById('jobTh'),
+      headline=document.getElementById('headline');
+const order=nodes.map((_,i)=>i).sort(()=>Math.random()-.5); // สุ่มลำดับ
+const getArticle=w=>/^[AEIOU]/i.test(w)?'an':'a';           // a / an อัตโนมัติ
+let ji=0, current=null, paused=false;
+
+function showJob(){
+  if(paused) return;
+  const n=nodes[order[ji]];
+  jobEl.classList.add('out');
+  setTimeout(()=>{
+    jobEl.textContent=n.en;
+    artEl.textContent=getArticle(n.en);
+    jobEl.style.color=n.c;
+    thEl.textContent='→ '+n.th+' · คลิกชื่ออาชีพเพื่อดูวิธีพัฒนา';
+    jobEl.classList.remove('out');
+    if(current) current.dot.setAttribute('r',6.5);   // คืนขนาดจุดเดิม
+    if(!open) n.dot.setAttribute('r',11);            // ขยายจุดในกราฟ
+    current=n;
+  },300);
+  ji=(ji+1)%order.length;
+}
+
+headline.addEventListener('mouseenter',()=>paused=true);
+headline.addEventListener('mouseleave',()=>paused=false);
+jobEl.addEventListener('click',()=>{ if(current) toggle(current); });
+
+showJob();
+setInterval(showJob,2000); // เปลี่ยนทุก 2 วินาที
+
+update();
+</script>
+</body>
+</html>
